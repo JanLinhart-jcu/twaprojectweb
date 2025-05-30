@@ -1,0 +1,7 @@
+Football|90|2025-05-01
+Cycling|60|2025-04-24
+
+Football|89|2025-05-22
+Football|90|2025-05-22
+Football|90|2025-05-27
+Cycling|90|2025-05-27
