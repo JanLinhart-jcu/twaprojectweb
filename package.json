@@ -1,16 +1,14 @@
 {
+  "name": "twa-project-web",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "echo 'Static build completed'",
+    "start": "echo 'Static files ready'"
+  },
   "dependencies": {
     "@firebasegen/default-connector": "file:dataconnect-generated/js/default-connector",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "firebase": "^11.8.1"
-  },
-  "scripts": {
-    "build": "ng build",
-    "start": "ng serve"
-  },
-  "devDependencies": {
-    "@angular/cli": "^17.0.0"
   }
 }
-
