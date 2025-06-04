@@ -4,5 +4,13 @@
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "firebase": "^11.8.1"
+  },
+  "scripts": {
+    "build": "ng build",
+    "start": "ng serve"
+  },
+  "devDependencies": {
+    "@angular/cli": "^17.0.0"
   }
 }
+
