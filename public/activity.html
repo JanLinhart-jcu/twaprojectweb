@@ -38,12 +38,34 @@
                 <button type="submit">Add Activity</button>
             </form>
             <h3>Your Logged Activities</h3>
+            <div id="loadingMessage" style="display: none;">Loading activities...</div>
             <ul id="activityList"></ul>
         </main>
         <footer class="footer">
             <p>&copy; 2025 JL Sport Diary. All rights reserved.</p>
         </footer>
     </div>
-    <script src="script.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+        import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+        
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC7ov2PUjMiVyGiRM96daTmP1Q4SaXUIHM",
+            authDomain: "twa---project-web.firebaseapp.com",
+            projectId: "twa---project-web",
+            storageBucket: "twa---project-web.firebasestorage.app",
+            messagingSenderId: "297435710962",
+            appId: "1:297435710962:web:52d15a9cac6e37b215176b",
+            measurementId: "G-BMMK2M8JM4"
+        };
+        
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        window.db = getFirestore(app);
+    </script>
+    <script type="module" src="firebase-script.js"></script>
 </body>
 </html>
