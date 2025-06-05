@@ -76,15 +76,26 @@
         };
         
         // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        console.log('Firebase initialized successfully');
+        let app, db;
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            console.log('Firebase initialized successfully');
+        } catch (error) {
+            console.error('Firebase initialization failed:', error);
+            alert('Firebase connection failed. Please check your internet connection.');
+        }
         
         // Reference na kolekci aktivit
-        const activitiesCollection = collection(db, 'activities');
+        let activitiesCollection;
 
         // Funkce pro načtení a zobrazení aktivit
         async function loadActivities() {
+            if (!db) {
+                console.error('Database not initialized');
+                return;
+            }
+            
             try {
                 console.log('Loading activities...');
                 const loadingMessage = document.getElementById('loadingMessage');
@@ -93,7 +104,7 @@
                 if (loadingMessage) loadingMessage.style.display = 'block';
                 if (activityList) activityList.innerHTML = '';
 
-                const q = query(activitiesCollection, orderBy('date', 'desc'));
+                const q = query(collection(db, 'activities'), orderBy('createdAt', 'desc'));
                 const querySnapshot = await getDocs(q);
                 
                 if (loadingMessage) loadingMessage.style.display = 'none';
@@ -122,25 +133,46 @@
                 const loadingMessage = document.getElementById('loadingMessage');
                 const activityList = document.getElementById('activityList');
                 if (loadingMessage) loadingMessage.style.display = 'none';
-                if (activityList) activityList.innerHTML = '<li>Error loading activities: ' + error.message + '</li>';
+                if (activityList) {
+                    if (error.code === 'permission-denied') {
+                        activityList.innerHTML = '<li>Permission denied. Please check Firebase rules.</li>';
+                    } else {
+                        activityList.innerHTML = '<li>Error loading activities: ' + error.message + '</li>';
+                    }
+                }
             }
         }
 
         // Funkce pro přidání aktivity
         async function addActivity(activityData) {
+            if (!db) {
+                alert('Database not initialized. Please refresh the page.');
+                return;
+            }
+            
             try {
                 console.log('Adding activity:', activityData);
-                await addDoc(activitiesCollection, {
-                    ...activityData,
+                
+                const docRef = await addDoc(collection(db, 'activities'), {
+                    activity: activityData.activity,
+                    duration: Number(activityData.duration),
+                    date: activityData.date,
                     createdAt: serverTimestamp()
                 });
                 
-                console.log('Activity added successfully');
+                console.log('Activity added successfully with ID:', docRef.id);
                 alert('Activity added successfully!');
-                loadActivities();
+                await loadActivities();
             } catch (error) {
                 console.error('Error adding activity:', error);
-                alert('Error adding activity: ' + error.message);
+                
+                if (error.code === 'permission-denied') {
+                    alert('Permission denied. Please check Firebase rules.');
+                } else if (error.code === 'unavailable') {
+                    alert('Firebase is temporarily unavailable. Please try again.');
+                } else {
+                    alert('Error adding activity: ' + error.message);
+                }
             }
         }
 
