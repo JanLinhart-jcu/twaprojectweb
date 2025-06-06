@@ -18,6 +18,27 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative;
+        }
+        
+        /* Overlay pro vynucení přihlášení */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 999;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        body.force-login::before {
+            opacity: 1;
+            pointer-events: all;
         }
         
         .container {
@@ -28,6 +49,8 @@
             width: 90%;
             max-width: 450px;
             animation: slideUp 0.5s ease-out;
+            position: relative;
+            z-index: 1000;
         }
         
         @keyframes slideUp {
@@ -339,18 +362,24 @@
             });
         }
 
-        // Sledování stavu přihlášení
+        // Sledování stavu přihlášení s povinným přihlášením
         auth.onAuthStateChanged(async (user) => {
             if (user) {
+                // Uživatel je přihlášen - zobraz dashboard
                 await displayUserDashboard(user);
             } else {
-                showAuthForm();
+                // Uživatel NENÍ přihlášen - vynutit přihlášení
+                forceLogin();
             }
         });
 
-        // Zobrazení dashboardu
+        // Zobrazení dashboardu po úspěšném přihlášení
         async function displayUserDashboard(user) {
             try {
+                // Odebrání overlay efektu a povolení scrollování
+                document.body.classList.remove('force-login');
+                document.body.style.overflow = 'auto';
+                
                 // Aktualizace posledního přihlášení
                 await db.collection('users').doc(user.uid).update({
                     lastLogin: firebase.firestore.FieldValue.serverTimestamp()
@@ -375,24 +404,39 @@
                     adminPanel.classList.add('hidden');
                 }
 
+                // Skrytí přihlašovacího formuláře a zobrazení dashboardu
                 authForm.classList.add('hidden');
                 dashboard.classList.remove('hidden');
+                hideMessages();
             } catch (error) {
                 console.error('Chyba při načítání uživatelských dat:', error);
+                showError('Chyba při načítání uživatelských dat');
             }
         }
 
-        // Zobrazení přihlašovacího formuláře
-        function showAuthForm() {
+        // Vynucení přihlášení - skryje veškerý obsah
+        function forceLogin() {
             dashboard.classList.add('hidden');
             authForm.classList.remove('hidden');
             loginForm.reset();
             hideMessages();
+            
+            // Přidání třídy pro overlay efekt
+            document.body.classList.add('force-login');
+            document.body.style.overflow = 'hidden';
+            
+            // Zobrazení zprávy o nutnosti přihlášení
+            setTimeout(() => {
+                showError('Pro přístup k webu se musíte přihlásit nebo zaregistrovat');
+            }, 100);
         }
 
-        // Odhlášení
+        // Odhlášení s návratem k povinnému přihlášení
         logoutBtn.addEventListener('click', () => {
-            auth.signOut();
+            auth.signOut().then(() => {
+                // Po odhlášení se automaticky spustí forceLogin() přes onAuthStateChanged
+                showSuccess('Byli jste úspěšně odhlášeni');
+            });
         });
 
         // Načtení všech uživatelů (admin funkce)
