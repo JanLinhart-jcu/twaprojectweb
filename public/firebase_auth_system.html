@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Auth Systém</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            padding: 40px;
+            width: 90%;
+            max-width: 450px;
+            animation: slideUp 0.5s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        h2 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .toggle-link {
+            text-align: center;
+            color: #667eea;
+            cursor: pointer;
+            text-decoration: underline;
+            margin: 15px 0;
+        }
+        
+        .user-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .admin-panel {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .error {
+            color: #e74c3c;
+            background: #fadbd8;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .success {
+            color: #27ae60;
+            background: #d5f4e6;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .users-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+        }
+        
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .role-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .role-admin {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .role-user {
+            background: #3498db;
+            color: white;
+        }
+        
+        .small-btn {
+            padding: 5px 10px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Přihlašovací formulář -->
+        <div id="authForm">
+            <h2 id="formTitle">Přihlášení</h2>
+            <div id="errorMessage" class="error hidden"></div>
+            <div id="successMessage" class="success hidden"></div>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Heslo:</label>
+                    <input type="password" id="password" required>
+                </div>
+                
+                <button type="submit" id="submitBtn">Přihlásit se</button>
+            </form>
+            
+            <div class="toggle-link" id="toggleForm">
+                Nemáte účet? Zaregistrujte se
+            </div>
+        </div>
+        
+        <!-- Dashboard pro přihlášené uživatele -->
+        <div id="dashboard" class="hidden">
+            <h2>Dashboard</h2>
+            
+            <div class="user-info">
+                <h3>Informace o uživateli</h3>
+                <p><strong>Email:</strong> <span id="userEmail"></span></p>
+                <p><strong>Role:</strong> <span id="userRole" class="role-badge"></span></p>
+                <p><strong>Registrace:</strong> <span id="userCreated"></span></p>
+            </div>
+            
+            <!-- Admin panel -->
+            <div id="adminPanel" class="admin-panel hidden">
+                <h3>🔧 Admin Panel</h3>
+                <p>Vítejte v administrátorském rozhraní!</p>
+                
+                <button id="loadUsersBtn">Načíst všechny uživatele</button>
+                
+                <div id="usersList" class="users-list hidden">
+                    <h4>Seznam uživatelů:</h4>
+                    <div id="usersContainer"></div>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <h4>Přidat admin roli:</h4>
+                    <input type="email" id="adminEmail" placeholder="Email uživatele">
+                    <button id="makeAdminBtn" class="small-btn">Přidat admin</button>
+                </div>
+            </div>
+            
+            <button id="logoutBtn">Odhlásit se</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.1/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.1/firebase-auth-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.1/firebase-firestore-compat.min.js"></script>
+
+    <script>
+        // Firebase konfigurace - NAHRAĎ SVÝMI ÚDAJI
+        const firebaseConfig = {
+            apiKey: "your-api-key",
+            authDomain: "your-project.firebaseapp.com",
+            projectId: "your-project-id",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "your-app-id"
+        };
+
+        // Inicializace Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // DOM elementy
+        const authForm = document.getElementById('authForm');
+        const dashboard = document.getElementById('dashboard');
+        const loginForm = document.getElementById('loginForm');
+        const toggleForm = document.getElementById('toggleForm');
+        const formTitle = document.getElementById('formTitle');
+        const submitBtn = document.getElementById('submitBtn');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const userEmail = document.getElementById('userEmail');
+        const userRole = document.getElementById('userRole');
+        const userCreated = document.getElementById('userCreated');
+        const adminPanel = document.getElementById('adminPanel');
+        const loadUsersBtn = document.getElementById('loadUsersBtn');
+        const usersList = document.getElementById('usersList');
+        const usersContainer = document.getElementById('usersContainer');
+        const makeAdminBtn = document.getElementById('makeAdminBtn');
+        const adminEmail = document.getElementById('adminEmail');
+
+        let isLogin = true;
+
+        // Toggle mezi přihlášením a registrací
+        toggleForm.addEventListener('click', () => {
+            isLogin = !isLogin;
+            if (isLogin) {
+                formTitle.textContent = 'Přihlášení';
+                submitBtn.textContent = 'Přihlásit se';
+                toggleForm.textContent = 'Nemáte účet? Zaregistrujte se';
+            } else {
+                formTitle.textContent = 'Registrace';
+                submitBtn.textContent = 'Zaregistrovat se';
+                toggleForm.textContent = 'Již máte účet? Přihlaste se';
+            }
+            hideMessages();
+        });
+
+        // Zpracování formuláře
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                submitBtn.disabled = true;
+                hideMessages();
+
+                if (isLogin) {
+                    await auth.signInWithEmailAndPassword(email, password);
+                    showSuccess('Úspěšně přihlášen!');
+                } else {
+                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                    // Vytvoření uživatelského profilu
+                    await createUserProfile(userCredential.user);
+                    showSuccess('Úspěšně zaregistrován!');
+                }
+            } catch (error) {
+                showError(getErrorMessage(error.code));
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Vytvoření uživatelského profilu v Firestore
+        async function createUserProfile(user) {
+            await db.collection('users').doc(user.uid).set({
+                email: user.email,
+                role: 'user', // Výchozí role
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+
+        // Sledování stavu přihlášení
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                await displayUserDashboard(user);
+            } else {
+                showAuthForm();
+            }
+        });
+
+        // Zobrazení dashboardu
+        async function displayUserDashboard(user) {
+            try {
+                // Aktualizace posledního přihlášení
+                await db.collection('users').doc(user.uid).update({
+                    lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // Načtení uživatelských dat
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                const userData = userDoc.data();
+
+                userEmail.textContent = user.email;
+                userRole.textContent = userData.role || 'user';
+                userRole.className = `role-badge role-${userData.role || 'user'}`;
+                
+                if (userData.createdAt) {
+                    userCreated.textContent = userData.createdAt.toDate().toLocaleDateString('cs-CZ');
+                }
+
+                // Zobrazení admin panelu pro administrátory
+                if (userData.role === 'admin') {
+                    adminPanel.classList.remove('hidden');
+                } else {
+                    adminPanel.classList.add('hidden');
+                }
+
+                authForm.classList.add('hidden');
+                dashboard.classList.remove('hidden');
+            } catch (error) {
+                console.error('Chyba při načítání uživatelských dat:', error);
+            }
+        }
+
+        // Zobrazení přihlašovacího formuláře
+        function showAuthForm() {
+            dashboard.classList.add('hidden');
+            authForm.classList.remove('hidden');
+            loginForm.reset();
+            hideMessages();
+        }
+
+        // Odhlášení
+        logoutBtn.addEventListener('click', () => {
+            auth.signOut();
+        });
+
+        // Načtení všech uživatelů (admin funkce)
+        loadUsersBtn.addEventListener('click', async () => {
+            try {
+                const usersSnapshot = await db.collection('users').get();
+                usersContainer.innerHTML = '';
+
+                usersSnapshot.forEach(doc => {
+                    const userData = doc.data();
+                    const userItem = document.createElement('div');
+                    userItem.className = 'user-item';
+                    userItem.innerHTML = `
+                        <div>
+                            <strong>${userData.email}</strong>
+                            <span class="role-badge role-${userData.role}">${userData.role}</span>
+                        </div>
+                        <div>
+                            ${userData.role !== 'admin' ? 
+                                `<button class="small-btn" onclick="toggleUserRole('${doc.id}', 'admin')">Přidat admin</button>` : 
+                                `<button class="small-btn" onclick="toggleUserRole('${doc.id}', 'user')">Odebrat admin</button>`
+                            }
+                        </div>
+                    `;
+                    usersContainer.appendChild(userItem);
+                });
+
+                usersList.classList.remove('hidden');
+            } catch (error) {
+                showError('Chyba při načítání uživatelů');
+            }
+        });
+
+        // Změna role uživatele
+        window.toggleUserRole = async (userId, newRole) => {
+            try {
+                await db.collection('users').doc(userId).update({
+                    role: newRole
+                });
+                showSuccess(`Role úspěšně změněna na ${newRole}`);
+                // Znovu načíst seznam
+                loadUsersBtn.click();
+            } catch (error) {
+                showError('Chyba při změně role');
+            }
+        };
+
+        // Přidání admin role podle emailu
+        makeAdminBtn.addEventListener('click', async () => {
+            const email = adminEmail.value.trim();
+            if (!email) {
+                showError('Zadejte email uživatele');
+                return;
+            }
+
+            try {
+                const usersSnapshot = await db.collection('users').where('email', '==', email).get();
+                
+                if (usersSnapshot.empty) {
+                    showError('Uživatel s tímto emailem nebyl nalezen');
+                    return;
+                }
+
+                const userDoc = usersSnapshot.docs[0];
+                await db.collection('users').doc(userDoc.id).update({
+                    role: 'admin'
+                });
+
+                showSuccess(`Uživatel ${email} má nyní admin práva`);
+                adminEmail.value = '';
+            } catch (error) {
+                showError('Chyba při přidávání admin role');
+            }
+        });
+
+        // Utility funkce
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.remove('hidden');
+            successMessage.classList.add('hidden');
+        }
+
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successMessage.classList.remove('hidden');
+            errorMessage.classList.add('hidden');
+        }
+
+        function hideMessages() {
+            errorMessage.classList.add('hidden');
+            successMessage.classList.add('hidden');
+        }
+
+        function getErrorMessage(errorCode) {
+            const messages = {
+                'auth/user-not-found': 'Uživatel nenalezen',
+                'auth/wrong-password': 'Nesprávné heslo',
+                'auth/email-already-in-use': 'Email je již používán',
+                'auth/weak-password': 'Heslo je příliš slabé',
+                'auth/invalid-email': 'Neplatný email',
+                'auth/too-many-requests': 'Příliš mnoho pokusů, zkuste později'
+            };
+            return messages[errorCode] || 'Nastala neočekávaná chyba';
+        }
+    </script>
+</body>
+</html>
