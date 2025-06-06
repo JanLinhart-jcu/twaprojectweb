@@ -541,6 +541,31 @@
             };
             return messages[errorCode] || 'Nastala neočekávaná chyba';
         }
+
+        // Ochrana jednotlivých stránek
+function requireAuth() {
+    return new Promise((resolve, reject) => {
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                resolve(user);
+            } else {
+                reject('Nutné přihlášení');
+                forceLogin();
+            }
+        });
+    });
+}
+
+// Použití při načítání obsahu
+async function loadProtectedContent() {
+    try {
+        await requireAuth();
+        // Načti obsah pouze pro přihlášené
+    } catch (error) {
+        console.log('Přístup zamítnut');
+    }
+}
+
     </script>
 </body>
 </html>
