@@ -6,9 +6,109 @@
     <title>Sport Diary - Home</title>
     <link rel="stylesheet" href="styles.css">
     <script type="text/javascript" src="darkmode.js" defer></script>
+    <style>
+        /* Loading screen pro kontrolu autentizace */
+        .auth-loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            flex-direction: column;
+        }
+        
+        .auth-loading.dark {
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Skrytí obsahu před ověřením */
+        .wrapper.auth-pending {
+            display: none;
+        }
+        
+        /* Styly pro auth tlačítko */
+        .auth-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .auth-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .auth-button.logout {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+        
+        .auth-button.logout:hover {
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+        }
+        
+        /* User info v headeru */
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .user-email {
+            font-weight: 500;
+        }
+        
+        /* Přizpůsobení navigace */
+        nav ul {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .auth-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+    </style>
 </head>
 <body>
-    <div class="wrapper">
+    <!-- Loading screen pro ověření autentizace -->
+    <div id="authLoadingScreen" class="auth-loading">
+        <div class="loading-spinner"></div>
+        <p>Ověřování přihlášení...</p>
+    </div>
+
+    <div class="wrapper auth-pending">
         <header>
             <button id="theme-switch">
                 <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3"><path d="M480-120q-150 0-255-105T120-480q0-150 105-255t255-105q14 0 27.5 1t26.5 3q-41 29-65.5 75.5T444-660q0 90 63 153t153 63q55 0 101-24.5t75-65.5q2 13 3 26.5t1 27.5q0 150-105 255T480-120Z"/></svg>
@@ -22,17 +122,190 @@
                     <li><a href="tips.html">Tips & Tricks</a></li>
                     <li><a href="about.html">About Us</a></li>
                     <li><a href="contact.html">Contact</a></li>
-                    <li><a href="firebase_auth_system.html">Login</a></li>
+                    <li class="auth-section">
+                        <div id="userInfo" class="user-info" style="display: none;">
+                            <span>Přihlášen jako: <span id="userEmail" class="user-email"></span></span>
+                        </div>
+                        <button id="authButton" class="auth-button">
+                            Přihlásit se
+                        </button>
+                    </li>
                 </ul>
             </nav>
         </header>
         <main>
             <h2>Your Journey to Fitness Starts Here!</h2>
             <p>Track your activities, set goals, and stay motivated with our sport diary.</p>
+            
+            <!-- Obsah jen pro přihlášené uživatele -->
+            <div id="protectedContent">
+                <section style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                    <h3>🎯 Rychlý přehled</h3>
+                    <p>Zde se zobrazí váš pokrok, statistiky a nejnovější aktivity.</p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px;">
+                        <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                            <h4>📊 Týdenní cíl</h4>
+                            <p>5/7 tréninků splněno</p>
+                        </div>
+                        <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                            <h4>🔥 Streak</h4>
+                            <p>12 dní v řadě</p>
+                        </div>
+                        <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                            <h4>⏱️ Celkový čas</h4>
+                            <p>24 hodin tento měsíc</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
         </main>
         <footer class="footer">
             <p>&copy; 2025 JL Sport Diary. All rights reserved.</p>
         </footer>
     </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import Firebase modulů
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js';
+        import { getAuth, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js';
+        import { getFirestore, doc, getDoc, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js';
+
+        // Firebase konfigurace - stejná jako v auth systému
+        const firebaseConfig = {
+            apiKey: "AIzaSyCdDo7vug0DyJ37IZG-S-SVZxDPnL22Ujg",
+            authDomain: "twa---project-web-1ff94.firebaseapp.com",
+            projectId: "twa---project-web-1ff94",
+            storageBucket: "twa---project-web-1ff94.appspot.com",
+            messagingSenderId: "266224242618",
+            appId: "1:266224242618:web:a1ba523da310e9b4add783"
+        };
+
+        // Inicializace Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // DOM elementy
+        const authLoadingScreen = document.getElementById('authLoadingScreen');
+        const wrapper = document.querySelector('.wrapper');
+        const authButton = document.getElementById('authButton');
+        const userInfo = document.getElementById('userInfo');
+        const userEmailSpan = document.getElementById('userEmail');
+        const protectedContent = document.getElementById('protectedContent');
+
+        let currentUser = null;
+
+        // Sledování stavu autentizace
+        onAuthStateChanged(auth, async (user) => {
+            console.log('Auth state changed:', user ? user.email : 'No user');
+            
+            if (user) {
+                // Uživatel je přihlášen
+                currentUser = user;
+                await handleLoggedInUser(user);
+            } else {
+                // Uživatel není přihlášen - přesměruj na login
+                redirectToLogin();
+            }
+        });
+
+        // Zpracování přihlášeného uživatele
+        async function handleLoggedInUser(user) {
+            try {
+                // Aktualizace posledního přihlášení
+                await updateDoc(doc(db, 'users', user.uid), {
+                    lastLogin: serverTimestamp()
+                });
+
+                // Načtení uživatelských dat
+                const userDoc = await getDoc(doc(db, 'users', user.uid));
+                const userData = userDoc.data();
+
+                // Aktualizace UI
+                userEmailSpan.textContent = user.email;
+                userInfo.style.display = 'flex';
+                authButton.textContent = 'Odhlásit se';
+                authButton.className = 'auth-button logout';
+                
+                // Zobrazení obsahu
+                showProtectedContent();
+                
+            } catch (error) {
+                console.error('Error handling logged in user:', error);
+                // Pokud je problém s Firestore, stále zobraz obsah
+                userEmailSpan.textContent = user.email;
+                userInfo.style.display = 'flex';
+                authButton.textContent = 'Odhlásit se';
+                authButton.className = 'auth-button logout';
+                showProtectedContent();
+            }
+        }
+
+        // Zobrazení chráněného obsahu
+        function showProtectedContent() {
+            authLoadingScreen.style.display = 'none';
+            wrapper.classList.remove('auth-pending');
+            protectedContent.style.display = 'block';
+        }
+
+        // Přesměrování na login
+        function redirectToLogin() {
+            // Malé zpoždění pro lepší UX
+            setTimeout(() => {
+                window.location.href = 'firebase_auth_system.html';
+            }, 1000);
+        }
+
+        // Zpracování kliknutí na auth tlačítko
+        authButton.addEventListener('click', async (e) => {
+            e.preventDefault();
+            
+            if (currentUser) {
+                // Uživatel je přihlášen - odhlásit
+                try {
+                    authButton.disabled = true;
+                    authButton.textContent = 'Odhlašování...';
+                    
+                    await signOut(auth);
+                    
+                    // Resetování UI
+                    userInfo.style.display = 'none';
+                    authButton.textContent = 'Přihlásit se';
+                    authButton.className = 'auth-button';
+                    authButton.disabled = false;
+                    
+                    // Přesměrování proběhne automaticky přes onAuthStateChanged
+                    
+                } catch (error) {
+                    console.error('Logout error:', error);
+                    authButton.disabled = false;
+                    authButton.textContent = 'Odhlásit se';
+                    alert('Chyba při odhlašování. Zkuste to znovu.');
+                }
+            } else {
+                // Uživatel není přihlášen - přesměrovat na login
+                window.location.href = 'firebase_auth_system.html';
+            }
+        });
+
+        // Fallback pro případ, že se Firebase nenačte
+        setTimeout(() => {
+            if (authLoadingScreen.style.display !== 'none') {
+                console.warn('Firebase Auth timeout, redirecting to login');
+                redirectToLogin();
+            }
+        }, 5000);
+
+        // Podpora pro dark mode na loading screen
+        const themeSwitch = document.getElementById('theme-switch');
+        if (themeSwitch) {
+            themeSwitch.addEventListener('click', () => {
+                const isDark = document.body.classList.contains('dark');
+                authLoadingScreen.classList.toggle('dark', !isDark);
+            });
+        }
+    </script>
 </body>
 </html>
