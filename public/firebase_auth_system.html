@@ -405,7 +405,8 @@
             
             if (user) {
                 console.log('User signed in:', user.email);
-                await displayUserDashboard(user);
+                // Přesměrování na index.html po úspěšném přihlášení
+                window.location.href = 'index.html';
             } else {
                 console.log('User signed out');
                 forceLogin();
