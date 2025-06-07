@@ -8,8 +8,8 @@ const firebaseConfig = {
   apiKey: "AIzaSyCdDo7vug0DyJ37IZG-S-SVZxDPnL22Ujg",
   authDomain: "twa---project-web-1ff94.web.app",
   projectId: "twa---project-web-1ff94",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "123456789",
+  storageBucket: "twa---project-web-1ff94.appspot.com",
+  messagingSenderId: "266224242618",
   appId: "1:266224242618:web:a1ba523da310e9b4add783"
 };
 

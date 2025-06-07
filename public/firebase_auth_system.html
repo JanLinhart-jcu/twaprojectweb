@@ -296,12 +296,27 @@
         </div>
     </div>
 
-    <!-- Firebase SDK -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.1/firebase-app-compat.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.1/firebase-auth-compat.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.1/firebase-firestore-compat.min.js"></script>
+    <!-- Firebase SDK v9 -->
+    <script type="module">
+        // Import Firebase modulů
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js';
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js';
+        import { getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, query, where, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js';
 
-    <script>
+        // Firebase konfigurace - OPRAVTE TYTO HODNOTY!
+        const firebaseConfig = {
+            apiKey: "AIzaSyCdDo7vug0DyJ37IZG-S-SVZxDPnL22Ujg",
+            authDomain: "twa---project-web-1ff94.firebaseapp.com", // OPRAVENO
+            projectId: "twa---project-web-1ff94",
+            storageBucket: "twa---project-web-1ff94.appspot.com", // OPRAVENO
+            messagingSenderId: "266224242618", // OPRAVENO
+            appId: "1:266224242618:web:a1ba523da310e9b4add783"
+        };
+
+        // Inicializace Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
 
         // DOM elementy
         const authForm = document.getElementById('authForm');
@@ -353,15 +368,16 @@
                 hideMessages();
 
                 if (isLogin) {
-                    await auth.signInWithEmailAndPassword(email, password);
+                    await signInWithEmailAndPassword(auth, email, password);
                     showSuccess('Úspěšně přihlášen!');
                 } else {
-                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                     // Vytvoření uživatelského profilu
                     await createUserProfile(userCredential.user);
                     showSuccess('Úspěšně zaregistrován!');
                 }
             } catch (error) {
+                console.error('Auth error:', error);
                 showError(getErrorMessage(error.code));
             } finally {
                 submitBtn.disabled = false;
@@ -370,29 +386,33 @@
 
         // Vytvoření uživatelského profilu v Firestore
         async function createUserProfile(user) {
-            await db.collection('users').doc(user.uid).set({
-                email: user.email,
-                role: 'user', // Výchozí role
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-            });
+            try {
+                await setDoc(doc(db, 'users', user.uid), {
+                    email: user.email,
+                    role: 'user',
+                    createdAt: serverTimestamp(),
+                    lastLogin: serverTimestamp()
+                });
+            } catch (error) {
+                console.error('Error creating user profile:', error);
+                throw error;
+            }
         }
 
-        // Sledování stavu přihlášení s povinným přihlášením
-        auth.onAuthStateChanged(async (user) => {
-            // Označení, že Firebase Auth je inicializován
+        // Sledování stavu přihlášení
+        onAuthStateChanged(auth, async (user) => {
             authInitialized = true;
             
             if (user) {
-                // Uživatel je přihlášen - zobraz dashboard
+                console.log('User signed in:', user.email);
                 await displayUserDashboard(user);
             } else {
-                // Uživatel NENÍ přihlášen - vynutit přihlášení
+                console.log('User signed out');
                 forceLogin();
             }
         });
 
-        // Pokud se Firebase nenačte do 3 sekund, zobraz přihlášení
+        // Fallback pro případ, že se Firebase nenačte
         setTimeout(() => {
             if (!authInitialized) {
                 console.warn('Firebase Auth se nenačetl, zobrazuji přihlašovací formulář');
@@ -400,24 +420,28 @@
             }
         }, 3000);
 
-        // Zobrazení dashboardu po úspěšném přihlášení
+        // Zobrazení dashboardu
         async function displayUserDashboard(user) {
             try {
-                // Skryj loading screen
                 loadingScreen.classList.add('hidden');
-                
-                // Odebrání overlay efektu a povolení scrollování
                 document.body.classList.remove('force-login');
                 document.body.style.overflow = 'auto';
-                
+
                 // Aktualizace posledního přihlášení
-                await db.collection('users').doc(user.uid).update({
-                    lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                await updateDoc(doc(db, 'users', user.uid), {
+                    lastLogin: serverTimestamp()
                 });
 
                 // Načtení uživatelských dat
-                const userDoc = await db.collection('users').doc(user.uid).get();
+                const userDoc = await getDoc(doc(db, 'users', user.uid));
                 const userData = userDoc.data();
+
+                if (!userData) {
+                    // Pokud profil neexistuje, vytvoř ho
+                    await createUserProfile(user);
+                    window.location.reload();
+                    return;
+                }
 
                 userEmail.textContent = user.email;
                 userRole.textContent = userData.role || 'user';
@@ -427,56 +451,52 @@
                     userCreated.textContent = userData.createdAt.toDate().toLocaleDateString('cs-CZ');
                 }
 
-                // Zobrazení admin panelu pro administrátory
+                // Admin panel
                 if (userData.role === 'admin') {
                     adminPanel.classList.remove('hidden');
                 } else {
                     adminPanel.classList.add('hidden');
                 }
 
-                // Skrytí přihlašovacího formuláře a zobrazení dashboardu
                 authForm.classList.add('hidden');
                 dashboard.classList.remove('hidden');
                 hideMessages();
             } catch (error) {
-                console.error('Chyba při načítání uživatelských dat:', error);
+                console.error('Error loading user data:', error);
                 showError('Chyba při načítání uživatelských dat');
             }
         }
 
-        // Vynucení přihlášení - skryje veškerý obsah
+        // Vynucení přihlášení
         function forceLogin() {
-            // Skryj loading screen a dashboard
             loadingScreen.classList.add('hidden');
             dashboard.classList.add('hidden');
-            
-            // Zobraz přihlašovací formulář
             authForm.classList.remove('hidden');
             loginForm.reset();
             hideMessages();
-            
-            // Přidání třídy pro overlay efekt
             document.body.classList.add('force-login');
             document.body.style.overflow = 'hidden';
             
-            // Zobrazení zprávy o nutnosti přihlášení
             setTimeout(() => {
                 showError('Pro přístup k webu se musíte přihlásit nebo zaregistrovat');
             }, 100);
         }
 
-        // Odhlášení s návratem k povinnému přihlášení
-        logoutBtn.addEventListener('click', () => {
-            auth.signOut().then(() => {
-                // Po odhlášení se automaticky spustí forceLogin() přes onAuthStateChanged
+        // Odhlášení
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                await signOut(auth);
                 showSuccess('Byli jste úspěšně odhlášeni');
-            });
+            } catch (error) {
+                console.error('Logout error:', error);
+                showError('Chyba při odhlašování');
+            }
         });
 
-        // Načtení všech uživatelů (admin funkce)
+        // Načtení všech uživatelů
         loadUsersBtn.addEventListener('click', async () => {
             try {
-                const usersSnapshot = await db.collection('users').get();
+                const usersSnapshot = await getDocs(collection(db, 'users'));
                 usersContainer.innerHTML = '';
 
                 usersSnapshot.forEach(doc => {
@@ -500,6 +520,7 @@
 
                 usersList.classList.remove('hidden');
             } catch (error) {
+                console.error('Error loading users:', error);
                 showError('Chyba při načítání uživatelů');
             }
         });
@@ -507,13 +528,13 @@
         // Změna role uživatele
         window.toggleUserRole = async (userId, newRole) => {
             try {
-                await db.collection('users').doc(userId).update({
+                await updateDoc(doc(db, 'users', userId), {
                     role: newRole
                 });
                 showSuccess(`Role úspěšně změněna na ${newRole}`);
-                // Znovu načíst seznam
                 loadUsersBtn.click();
             } catch (error) {
+                console.error('Error changing role:', error);
                 showError('Chyba při změně role');
             }
         };
@@ -527,7 +548,8 @@
             }
 
             try {
-                const usersSnapshot = await db.collection('users').where('email', '==', email).get();
+                const usersQuery = query(collection(db, 'users'), where('email', '==', email));
+                const usersSnapshot = await getDocs(usersQuery);
                 
                 if (usersSnapshot.empty) {
                     showError('Uživatel s tímto emailem nebyl nalezen');
@@ -535,13 +557,14 @@
                 }
 
                 const userDoc = usersSnapshot.docs[0];
-                await db.collection('users').doc(userDoc.id).update({
+                await updateDoc(doc(db, 'users', userDoc.id), {
                     role: 'admin'
                 });
 
                 showSuccess(`Uživatel ${email} má nyní admin práva`);
                 adminEmail.value = '';
             } catch (error) {
+                console.error('Error adding admin role:', error);
                 showError('Chyba při přidávání admin role');
             }
         });
@@ -569,11 +592,12 @@
                 'auth/user-not-found': 'Uživatel nenalezen',
                 'auth/wrong-password': 'Nesprávné heslo',
                 'auth/email-already-in-use': 'Email je již používán',
-                'auth/weak-password': 'Heslo je příliš slabé',
+                'auth/weak-password': 'Heslo je příliš slabé (min. 6 znaků)',
                 'auth/invalid-email': 'Neplatný email',
-                'auth/too-many-requests': 'Příliš mnoho pokusů, zkuste později'
+                'auth/too-many-requests': 'Příliš mnoho pokusů, zkuste později',
+                'auth/network-request-failed': 'Chyba sítě, zkontrolujte připojení'
             };
-            return messages[errorCode] || 'Nastala neočekávaná chyba';
+            return messages[errorCode] || `Chyba: ${errorCode}`;
         }
     </script>
 </body>
