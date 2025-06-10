@@ -1,4 +1,4 @@
-<!--<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -6,6 +6,57 @@
     <title>Sport Diary - Activity Log</title>
     <link rel="stylesheet" href="styles.css">
     <script type="text/javascript" src="darkmode.js" defer></script>
+    <style>
+        .auth-container {
+            max-width: 400px;
+            margin: 2rem auto;
+            padding: 2rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .auth-form input {
+            width: 100%;
+            padding: 0.5rem;
+            margin: 0.5rem 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .auth-form button {
+            width: 100%;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .auth-form button:hover {
+            background: #0056b3;
+        }
+        .user-info {
+            background: #e9f7ef;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            float: right;
+        }
+        .logout-btn:hover {
+            background: #c82333;
+        }
+        #mainContent {
+            display: none;
+        }
+    </style>
 </head>
 <body>
     <div class="wrapper">
@@ -25,7 +76,36 @@
                 </ul>
             </nav>
         </header>
-        <main>
+
+        <!-- Authentication Section -->
+        <div id="authContainer" class="auth-container">
+            <h2>Please Login or Register</h2>
+            <div id="loginForm" class="auth-form">
+                <h3>Login</h3>
+                <input type="email" id="loginEmail" placeholder="Email" required>
+                <input type="password" id="loginPassword" placeholder="Password" required>
+                <button onclick="login()">Login</button>
+                <p><a href="#" onclick="showRegister()">Don't have an account? Register here</a></p>
+            </div>
+            
+            <div id="registerForm" class="auth-form" style="display: none;">
+                <h3>Register</h3>
+                <input type="email" id="registerEmail" placeholder="Email" required>
+                <input type="password" id="registerPassword" placeholder="Password (min 6 characters)" required>
+                <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+                <button onclick="register()">Register</button>
+                <p><a href="#" onclick="showLogin()">Already have an account? Login here</a></p>
+            </div>
+        </div>
+
+        <!-- Main Content (hidden until authenticated) -->
+        <main id="mainContent">
+            <div class="user-info">
+                <span>Logged in as: <strong id="userEmail"></strong></span>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+                <div style="clear: both;"></div>
+            </div>
+            
             <h2>Log Your Activities</h2>
             <p>Keep track of your workouts and progress with ease! Fill out the form below to log your activities and stay accountable on your fitness journey.</p>
             <form id="activityForm">
@@ -41,12 +121,13 @@
             <div id="loadingMessage" style="display: none;">Loading activities...</div>
             <ul id="activityList"></ul>
         </main>
+        
         <footer class="footer">
             <p>&copy; 2025 JL Sport Diary. All rights reserved.</p>
         </footer>
     </div>
 
-    <!-- Firebase v9+ modular SDK 
+    <!-- Firebase v9+ modular SDK -->
     <script type="module">
         // Import Firebase functions
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
@@ -59,51 +140,143 @@
             doc, 
             query,
             orderBy,
-            serverTimestamp
+            serverTimestamp,
+            where
         } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+        import { 
+            getAuth, 
+            createUserWithEmailAndPassword, 
+            signInWithEmailAndPassword, 
+            signOut,
+            onAuthStateChanged
+        } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
 
         console.log('Starting Firebase initialization...');
         
         // Firebase configuration
         const firebaseConfig = {
-        apiKey: "AIzaSyCdDo7vug0DyJ37IZG-S-SVZxDPnL22Ujg",
-        authDomain: "twa---project-web-1ff94.web.app",
-        projectId: "twa---project-web-1ff94",
-        storageBucket: "your-project.appspot.com",
-        messagingSenderId: "123456789",
-        appId: "1:266224242618:web:a1ba523da310e9b4add783"
+            apiKey: "AIzaSyCdDo7vug0DyJ37IZG-S-SVZxDPnL22Ujg",
+            authDomain: "twa---project-web-1ff94.web.app",
+            projectId: "twa---project-web-1ff94",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:266224242618:web:a1ba523da310e9b4add783"
         };
         
         // Initialize Firebase
-        let app, db;
+        let app, db, auth;
+        let currentUser = null;
+        
         try {
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
+            auth = getAuth(app);
             console.log('Firebase initialized successfully');
         } catch (error) {
             console.error('Firebase initialization failed:', error);
             alert('Firebase connection failed. Please check your internet connection.');
         }
-        
-        // Reference na kolekci aktivit
-        let activitiesCollection;
 
-        // Funkce pro načtení a zobrazení aktivit
+        // Auth state observer
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('authContainer').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+                document.getElementById('userEmail').textContent = user.email;
+                loadActivities();
+            } else {
+                currentUser = null;
+                document.getElementById('authContainer').style.display = 'block';
+                document.getElementById('mainContent').style.display = 'none';
+            }
+        });
+
+        // Authentication functions
+        window.showRegister = function() {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
+        }
+
+        window.showLogin = function() {
+            document.getElementById('registerForm').style.display = 'none';
+            document.getElementById('loginForm').style.display = 'block';
+        }
+
+        window.register = async function() {
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (password !== confirmPassword) {
+                alert('Passwords do not match!');
+                return;
+            }
+
+            if (password.length < 6) {
+                alert('Password must be at least 6 characters long!');
+                return;
+            }
+
+            try {
+                await createUserWithEmailAndPassword(auth, email, password);
+                alert('Registration successful!');
+                // Reset form
+                document.getElementById('registerEmail').value = '';
+                document.getElementById('registerPassword').value = '';
+                document.getElementById('confirmPassword').value = '';
+            } catch (error) {
+                console.error('Registration error:', error);
+                alert('Registration failed: ' + error.message);
+            }
+        }
+
+        window.login = async function() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                // Reset form
+                document.getElementById('loginEmail').value = '';
+                document.getElementById('loginPassword').value = '';
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Login failed: ' + error.message);
+            }
+        }
+
+        window.logout = async function() {
+            try {
+                await signOut(auth);
+                document.getElementById('activityList').innerHTML = '';
+            } catch (error) {
+                console.error('Logout error:', error);
+                alert('Logout failed: ' + error.message);
+            }
+        }
+
+        // Activity management functions
         async function loadActivities() {
-            if (!db) {
-                console.error('Database not initialized');
+            if (!db || !currentUser) {
+                console.error('Database not initialized or user not authenticated');
                 return;
             }
             
             try {
-                console.log('Loading activities...');
+                console.log('Loading activities for user:', currentUser.uid);
                 const loadingMessage = document.getElementById('loadingMessage');
                 const activityList = document.getElementById('activityList');
                 
                 if (loadingMessage) loadingMessage.style.display = 'block';
                 if (activityList) activityList.innerHTML = '';
 
-                const q = query(collection(db, 'activities'), orderBy('createdAt', 'desc'));
+                // Query activities only for the current user
+                const q = query(
+                    collection(db, 'activities'), 
+                    where('userId', '==', currentUser.uid),
+                    orderBy('createdAt', 'desc')
+                );
                 const querySnapshot = await getDocs(q);
                 
                 if (loadingMessage) loadingMessage.style.display = 'none';
@@ -142,20 +315,21 @@
             }
         }
 
-        // Funkce pro přidání aktivity
         async function addActivity(activityData) {
-            if (!db) {
-                alert('Database not initialized. Please refresh the page.');
+            if (!db || !currentUser) {
+                alert('Database not initialized or user not authenticated. Please refresh the page.');
                 return;
             }
             
             try {
-                console.log('Adding activity:', activityData);
+                console.log('Adding activity for user:', currentUser.uid, activityData);
                 
                 const docRef = await addDoc(collection(db, 'activities'), {
                     activity: activityData.activity,
                     duration: Number(activityData.duration),
                     date: activityData.date,
+                    userId: currentUser.uid, // Associate activity with current user
+                    userEmail: currentUser.email, // Optional: store user email for reference
                     createdAt: serverTimestamp()
                 });
                 
@@ -175,7 +349,6 @@
             }
         }
 
-        // Funkce pro smazání aktivity
         window.deleteActivity = async function(activityId) {
             if (!confirm('Are you sure you want to delete this activity?')) {
                 return;
@@ -191,19 +364,20 @@
             }
         }
 
-        // Event listener pro formulář
+        // Form event listener
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM loaded, setting up form...');
             
-            // Načíst aktivity při načtení stránky
-            loadActivities();
-            
-            // Přidat event listener pro formulář
             const form = document.getElementById('activityForm');
             if (form) {
                 form.addEventListener('submit', async function(event) {
                     event.preventDefault();
                     console.log('Form submitted!');
+
+                    if (!currentUser) {
+                        alert('Please login first!');
+                        return;
+                    }
 
                     const activity = document.getElementById('activity').value.trim();
                     const duration = parseInt(document.getElementById('duration').value);
@@ -211,7 +385,7 @@
 
                     console.log('Form data:', { activity, duration, date });
 
-                    // Validace
+                    // Validation
                     if (!activity || !duration || !date) {
                         alert('Please fill in all fields');
                         return;
@@ -222,17 +396,17 @@
                         return;
                     }
 
-                    // Vytvořit objekt aktivity
+                    // Create activity object
                     const newActivity = {
                         activity: activity,
                         duration: duration,
                         date: date
                     };
 
-                    // Přidat aktivitu do Firebase
+                    // Add activity to Firebase
                     await addActivity(newActivity);
                     
-                    // Vyčistit formulář
+                    // Clear form
                     form.reset();
                 });
             } else {
