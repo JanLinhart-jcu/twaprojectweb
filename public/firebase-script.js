@@ -1,4 +1,3 @@
-// firebase-script.js - Nahrazuje původní script.js
 import { 
     collection, 
     addDoc, 
@@ -127,7 +126,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadActivities();
 });
 
-// Volitelně: Real-time poslouchání změn (aktivuje se automatické aktualizace)
+
 function enableRealTimeUpdates() {
     const q = query(activitiesCollection, orderBy('date', 'desc'));
     
@@ -156,6 +155,3 @@ function enableRealTimeUpdates() {
         console.error('Error in real-time listener:', error);
     });
 }
-
-// Uncomment the line below to enable real-time updates
-// enableRealTimeUpdates();
